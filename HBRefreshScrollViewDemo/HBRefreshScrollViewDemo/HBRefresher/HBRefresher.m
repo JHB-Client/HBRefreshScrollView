@@ -14,12 +14,13 @@ _Pragma("clang diagnostic ignored \"-Warc-performSelector-leaks\"") \
 Stuff; \
 _Pragma("clang diagnostic pop") \
 } while (0)
-static CGFloat lastOffsetY = 0;
-static BOOL naviBarHidden = false;
-@interface HBRefresher()
+static BOOL hasNavigationBar;
+static BOOL hasStatusBar;
+@interface HBRefresher() <UIScrollViewDelegate>
 @property (nonatomic, strong) UIScrollView *scrollView;
 @property (nonatomic, strong) id target;
 @property (nonatomic, assign) SEL refreshAction;
+@property (nonatomic, assign) CGFloat refreshOffsetY;
 @end
 
 @implementation HBRefresher
@@ -37,46 +38,30 @@ static BOOL naviBarHidden = false;
     self.backgroundColor = [UIColor blueColor];
 }
 
-
 - (void)willMoveToSuperview:(UIView *)newSuperview {
     if (newSuperview && [newSuperview isKindOfClass:UIScrollView.class]) {
         self.scrollView = (UIScrollView *)newSuperview;
-        [self.scrollView addObserver:self forKeyPath:@"contentOffset" options:NSKeyValueObservingOptionNew context:nil];
-        //
-        UIViewController *vctr = [self currentViewController];
-        naviBarHidden = vctr.navigationController.navigationBar.hidden;
+        self.scrollView.delegate = self;
+        UIViewController *vctr = [self currentViewController:newSuperview];
+        hasNavigationBar = [self hasNavigationBar:vctr];
         
-        NSLog(@"----fffffffff--:%d", naviBarHidden);
+        CGRect statusBarFrame = [UIApplication sharedApplication].statusBarFrame;
+        hasStatusBar = !CGRectEqualToRect(statusBarFrame, CGRectZero);
+        
+        self.refreshOffsetY = (self.bounds.size.height + (hasNavigationBar == true ? (hasStatusBar == true ? 64 : 44) : 0));
     }
 }
 
--(void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSString *,id> *)change context:(void *)context{
-    
-    UIScrollView *scrollView = self.scrollView;
-    CGFloat offsetY = scrollView.contentOffset.y;
-    
-    if (scrollView.dragging) {
-        if (lastOffsetY > offsetY) { // 向下拖动
-            
-        } else if(lastOffsetY < offsetY){ // 向上拖动
-            
-        }
-        lastOffsetY = offsetY;
-    }
-    
-    if (scrollView.decelerating) { //在减速
-        if (scrollView.contentOffset.y < - 164) {
-            [UIView animateWithDuration:0.25 animations:^{
-                scrollView.contentInset = UIEdgeInsetsMake(100, 0, 0, 0);
-            } completion:^(BOOL finished) { // 下拉刷新
-                [self refreshInnerAction];
-            }];
-        }
+- (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView {
+    if (scrollView.contentOffset.y < - self.refreshOffsetY) {
+        [UIView animateWithDuration:0.25 animations:^{
+            scrollView.contentInset = UIEdgeInsetsMake(100, 0, 0, 0);
+        } completion:^(BOOL finished) { // 下拉刷新
+            [self refreshInnerAction];
+        }];
     }
 }
-- (void)dealloc{
-    [self.scrollView removeObserver:self forKeyPath:@"contentOffset"];
-}
+
 #pragma mark -- 实例方法
 - (void)beginRefresh {
     [UIView animateWithDuration:0.25 animations:^{
@@ -117,13 +102,28 @@ static BOOL naviBarHidden = false;
 }
 
 #pragma mark -- 辅助方法
-- (UIViewController *)currentViewController {
-    for (UIView* next = [self superview]; next; next = next.superview) {
+- (UIViewController *)currentViewController:(UIView *)superView {
+    for (UIView* next = superView; next; next = next.superview) {
         UIResponder *nextResponder = [next nextResponder];
         if ([nextResponder isKindOfClass:[UIViewController class]]) {
             return (UIViewController *)nextResponder;
         }
     }
     return nil;
+}
+
+- (BOOL)hasNavigationBar:(UIViewController *)VCtr{
+    if (VCtr.navigationController == nil) {
+        return false;
+    }
+    
+    BOOL hasNavigationBar1 = [[UIApplication sharedApplication].keyWindow.rootViewController isEqual:VCtr.navigationController];
+    
+    BOOL hasNavigationBar2 = [[UIApplication sharedApplication].keyWindow.rootViewController.childViewControllers containsObject:VCtr.navigationController];
+    if ((hasNavigationBar1 || hasNavigationBar2) == true) {
+        return !VCtr.navigationController.navigationBar.hidden;
+    } else {
+        return false;
+    }
 }
 @end

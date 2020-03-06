@@ -20,7 +20,7 @@
     // Do any additional setup after loading the view, typically from a nib.
     
     
-    self.navigationController.navigationBarHidden = true;
+    self.navigationController.navigationBarHidden = false;
     
     self.tableView = [[MyTableView alloc] initWithFrame:self.view.bounds style:UITableViewStylePlain];
     [self.view addSubview:self.tableView];
@@ -33,8 +33,10 @@
 }
 
 - (void)refreshData {
-    NSLog(@"各种操作");
-    [self.tableView.refresher endRefresh];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.tableView.refresher endRefresh];
+    });
+    
 }
 
 @end
