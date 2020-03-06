@@ -53,6 +53,7 @@ static BOOL hasStatusBar;
 }
 
 - (void)scrollViewWillBeginDecelerating:(UIScrollView *)scrollView {
+    if (self.scrollView == nil) return;
     if (scrollView.contentOffset.y < - self.refreshOffsetY) {
         [UIView animateWithDuration:0.25 animations:^{
             scrollView.contentInset = UIEdgeInsetsMake(100, 0, 0, 0);
@@ -64,6 +65,7 @@ static BOOL hasStatusBar;
 
 #pragma mark -- 实例方法
 - (void)beginRefresh {
+    if (self.scrollView == nil) return;
     [UIView animateWithDuration:0.25 animations:^{
         self.scrollView.contentInset = UIEdgeInsetsMake(100, 0, 0, 0);
     } completion:^(BOOL finished) {
